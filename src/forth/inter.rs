@@ -4,8 +4,8 @@ use std::slice::Iter;
 
 use forth::ops;
 
-pub type ForthResult = result::Result<(), String>;
-pub type Ops = Fn(&mut ForthEnv) -> ForthResult;
+pub type ForthResult<T> = result::Result<T, String>;
+pub type Ops = Fn(&mut ForthEnv) -> ForthResult<()>;
 pub type ForthFunc = (String, Vec<String>);
 
 pub struct ForthEnv {
@@ -25,8 +25,11 @@ impl ForthEnv {
         }
     }
 
-    pub fn pop(&mut self) -> Option<i32> {
-        self.stack.pop()
+    pub fn pop(&mut self, msg: String) -> ForthResult<i32> {
+        match self.stack.pop() {
+            Some(n) => Ok(n),
+            None => Err(msg),
+        }
     }
 
     pub fn push(&mut self, val: i32) {
@@ -116,7 +119,7 @@ impl<'a> Interpreter<'a> {
         self.eval_toks(env, &mut tokens.iter());
     }
 
-    fn builtin_operator(&self, env: &mut ForthEnv, op: &str) -> Option<ForthResult> {
+    fn builtin_operator(&self, env: &mut ForthEnv, op: &str) -> Option<ForthResult<()>> {
         if self.builtins.contains_key(op) {
             let opr = self.builtins.get(op).unwrap();
             Some(opr(env))
@@ -135,11 +138,23 @@ impl<'a> Interpreter<'a> {
     }
 
     fn init(&mut self) {
-        self.builtins.insert("p".to_owned(), &ops::print_stack);
-        self.builtins.insert("d".to_owned(), &ops::print_func);
+        // Binary ops
         self.builtins.insert("+".to_owned(), &ops::add);
         self.builtins.insert("-".to_owned(), &ops::subtract);
         self.builtins.insert("*".to_owned(), &ops::mul);
         self.builtins.insert("/".to_owned(), &ops::div);
+
+        // Core ops
+        self.builtins.insert("p".to_owned(), &ops::print_stack);
+        self.builtins.insert("d".to_owned(), &ops::print_func);
+        self.builtins.insert("dup".to_owned(), &ops::dup);
+        self.builtins.insert(".".to_owned(), &ops::pop);
+
+        // Boolean ops
+        self.builtins.insert("=".to_owned(), &ops::eq);
+        self.builtins.insert("<".to_owned(), &ops::lt);
+        self.builtins.insert(">".to_owned(), &ops::gt);
+        self.builtins.insert("<=".to_owned(), &ops::lt_eq);
+        self.builtins.insert(">=".to_owned(), &ops::gt_eq);
     }
 }
