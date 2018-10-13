@@ -13,9 +13,15 @@ fn binary_op(name: &str, op: BinOp, env: &mut ForthEnv) -> ForthResult {
     Ok(())
 }
 
-pub fn print(env: &mut ForthEnv) -> ForthResult {
+pub fn print_stack(env: &mut ForthEnv) -> ForthResult {
     print!("Stack: ");
-    env.print();
+    env.print_stack();
+    Ok(())
+}
+
+pub fn print_func(env: &mut ForthEnv) -> ForthResult {
+    print!("Dictionary: ");
+    env.print_func();
     Ok(())
 }
 
