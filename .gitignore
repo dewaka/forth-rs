@@ -1,3 +1,6 @@
 /target
 **/*.rs.bk
 Session.vim
+GPATH
+GRTAGS
+GTAGS
