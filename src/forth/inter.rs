@@ -65,7 +65,6 @@ impl<'a> Interpreter<'a> {
         Err(format!("Invalid function"))
     }
 
-    // TODO: Fix this - tokenisation as I've done does not work with this case!
     fn parse_string(&self, toks: &mut Iter<String>) -> ForthResult<String> {
         let mut msg = String::new();
 
@@ -83,6 +82,47 @@ impl<'a> Interpreter<'a> {
         }
 
         Err(format!("Nonterminated string"))
+    }
+
+    fn eval_conditional(&self, env: &mut ForthEnv, toks: &mut Iter<String>) -> ForthResult<()> {
+        let res = env.pop("Empty stack for condition in if".to_string())?;
+
+        // Check the top of the stack and if it is not zero then evaluate till then
+        let mut before_else = vec![];
+        let mut after_else = vec![];
+        let mut found_else = false;
+
+        while let Some(t) = toks.next() {
+            if t == "then" {
+                break;
+            }
+
+            if t == "else" {
+                found_else = true;
+                continue;
+            }
+
+            if found_else {
+                after_else.push(t.clone());
+            } else {
+                before_else.push(t.clone());
+            }
+        }
+
+        if before_else.is_empty() {
+            return Err("Empty statement for then clause".to_string());
+        }
+        if found_else && after_else.is_empty() {
+            return Err("Empty statement for then clause after else".to_string());
+        }
+
+        if res == 0 {
+            self.eval_toks(env, &mut before_else.iter());
+        } else {
+            self.eval_toks(env, &mut after_else.iter());
+        }
+
+        Ok(())
     }
 
     fn eval_special(
@@ -115,6 +155,13 @@ impl<'a> Interpreter<'a> {
             }
         }
 
+        if start == "if" {
+            match self.eval_conditional(env, toks) {
+                Ok(()) => return Some(Ok(())),
+                Err(e) => return Some(Err(e)),
+            }
+        }
+
         None
     }
 
@@ -125,6 +172,7 @@ impl<'a> Interpreter<'a> {
                 continue;
             }
 
+            // Handle special forms
             match self.eval_special(s, env, toks) {
                 None => (),
                 Some(Ok(())) => continue,
@@ -134,6 +182,7 @@ impl<'a> Interpreter<'a> {
                 }
             }
 
+            // Handle as a number
             match s.parse::<i32>() {
                 Ok(num) => env.push(num),
                 Err(_) => {
