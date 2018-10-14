@@ -2,10 +2,29 @@ use forth::inter::{ForthEnv, ForthFunc, ForthResult, Interpreter};
 use std::slice::Iter;
 
 impl<'a> Interpreter<'a> {
-    fn builtin_operator(&self, env: &mut ForthEnv, op: &str) -> Option<ForthResult<()>> {
+    fn eval_builtin(&self, op: &str, env: &mut ForthEnv) -> Option<ForthResult<()>> {
         if self.builtins.contains_key(op) {
             let opr = self.builtins.get(op).unwrap();
             Some(opr(env))
+        } else {
+            None
+        }
+    }
+
+    fn eval_function(&self, name: &str, env: &mut ForthEnv) -> Option<ForthResult<()>> {
+        if env.funcs.contains_key(&name.to_string()) {
+            let func = env.funcs.get(&name.to_string()).unwrap().clone();
+            self.eval_toks(env, &mut func.1.iter());
+            Some(Ok(()))
+        } else {
+            None
+        }
+    }
+
+    fn eval_variable(&self, name: &str, env: &mut ForthEnv) -> Option<ForthResult<()>> {
+        if env.vars.contains_key(&name.to_string()) {
+            env.var_refs.push(name.to_string());
+            Some(Ok(()))
         } else {
             None
         }
@@ -28,21 +47,39 @@ impl<'a> Interpreter<'a> {
                 }
             }
 
+            match self.eval_builtin(s, env) {
+                None => (),
+                Some(Ok(())) => continue,
+                Some(Err(e)) => {
+                    println!("Error: {}", e);
+                    break;
+                }
+            }
+
+            match self.eval_function(s, env) {
+                None => (),
+                Some(Ok(())) => continue,
+                Some(Err(e)) => {
+                    println!("Error: {}", e);
+                    break;
+                }
+            }
+
             // Handle as a number
             match s.parse::<i32>() {
                 Ok(num) => env.push(num),
                 Err(_) => {
-                    if let Some(res) = self.builtin_operator(env, s) {
-                        match res {
-                            Err(e) => println!("Error: {}", e),
-                            _ => (),
+                    // Check if this is a valid variable or not
+                    match self.eval_variable(s, env) {
+                        None => {
+                            println!("Invalid token: {}", s);
+                            break;
                         }
-                    } else if env.funcs.contains_key(&s.to_string()) {
-                        let func = env.funcs.get(&s.to_string()).unwrap().clone();
-                        self.eval_toks(env, &mut func.1.iter())
-                    } else {
-                        println!("Invalid token: {}", s);
-                        break;
+                        Some(Ok(())) => continue,
+                        Some(Err(e)) => {
+                            println!("Error: {}", e);
+                            break;
+                        }
                     }
                 }
             }
@@ -168,6 +205,68 @@ impl<'a> Interpreter<'a> {
             }
         }
 
+        if start == "@" {
+            // Variable get
+            match self.eval_variable_get(env) {
+                Ok(()) => return Some(Ok(())),
+                Err(e) => return Some(Err(e)),
+            }
+        }
+
+        if start == "!" {
+            // Variable set
+            match self.eval_variable_set(env) {
+                Ok(()) => return Some(Ok(())),
+                Err(e) => return Some(Err(e)),
+            }
+        }
+
+        if start == "variable" {
+            // Variable introduction
+            match self.eval_intro_variable(env, toks) {
+                Ok(()) => return Some(Ok(())),
+                Err(e) => return Some(Err(e)),
+            }
+        }
+
         None
+    }
+
+    fn eval_intro_variable(&self, env: &mut ForthEnv, toks: &mut Iter<String>) -> ForthResult<()> {
+        if let Some(var_name) = toks.next() {
+            // TODO: Check if this is a valid variable name or not
+            env.vars.insert(var_name.clone(), 0);
+            Ok(())
+        } else {
+            Err(format!("Variable name not found"))
+        }
+    }
+
+    fn eval_variable_set(&self, env: &mut ForthEnv) -> ForthResult<()> {
+        match env.var_refs.pop() {
+            Some(var_name) => {
+                if env.vars.contains_key(&var_name) {
+                    let x = env.pop(format!("Stack empty to set variable value"))?;
+                    env.vars.insert(var_name, x);
+                    Ok(())
+                } else {
+                    Err(format!("No such variable: {}", var_name))
+                }
+            }
+            None => Err(format!("No variable reference found to set value")),
+        }
+    }
+
+    fn eval_variable_get(&self, env: &mut ForthEnv) -> ForthResult<()> {
+        match env.var_refs.pop() {
+            Some(var_name) => match env.vars.get(&var_name) {
+                Some(&value) => {
+                    env.push(value);
+                    Ok(())
+                }
+                None => Err(format!("No such variable: {}", var_name)),
+            },
+            None => Err(format!("No variable reference found to set value")),
+        }
     }
 }

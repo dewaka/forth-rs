@@ -10,6 +10,8 @@ pub type ForthFunc = (String, Vec<String>);
 pub struct ForthEnv {
     pub stack: Vec<i32>,
     pub funcs: HashMap<String, ForthFunc>,
+    pub vars: HashMap<String, i32>,
+    pub var_refs: Vec<String>,
 }
 
 pub struct Interpreter<'a> {
@@ -21,6 +23,8 @@ impl ForthEnv {
         ForthEnv {
             stack: vec![],
             funcs: HashMap::new(),
+            vars: HashMap::new(),
+            var_refs: vec![],
         }
     }
 
@@ -41,6 +45,10 @@ impl ForthEnv {
 
     pub fn print_func(&self) {
         println!("{:?}", self.funcs);
+    }
+
+    pub fn print_vars(&self) {
+        println!("{:?}", self.vars);
     }
 }
 
@@ -69,6 +77,7 @@ impl<'a> Interpreter<'a> {
         // Core ops
         self.builtins.insert("p".to_owned(), &ops::print_stack);
         self.builtins.insert("d".to_owned(), &ops::print_func);
+        self.builtins.insert("v".to_owned(), &ops::print_vars);
         self.builtins.insert("dup".to_owned(), &ops::dup);
         self.builtins.insert(".".to_owned(), &ops::pop);
         self.builtins.insert("drop".to_owned(), &ops::drop);

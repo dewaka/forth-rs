@@ -95,6 +95,12 @@ pub fn print_func(env: &mut ForthEnv) -> ForthResult<()> {
     Ok(())
 }
 
+pub fn print_vars(env: &mut ForthEnv) -> ForthResult<()> {
+    print!("Variables: ");
+    env.print_vars();
+    Ok(())
+}
+
 // Boolean operations
 type BinBoolOp = fn(i32, i32) -> bool;
 
