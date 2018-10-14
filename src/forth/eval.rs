@@ -30,6 +30,16 @@ impl<'a> Interpreter<'a> {
         }
     }
 
+    fn eval_constant(&self, name: &str, env: &mut ForthEnv) -> Option<ForthResult<()>> {
+        if env.constants.contains_key(&name.to_string()) {
+            let x = env.constants.get(&name.to_string()).unwrap().clone();
+            env.push(x);
+            Some(Ok(()))
+        } else {
+            None
+        }
+    }
+
     pub fn eval_toks(&self, env: &mut ForthEnv, toks: &mut Iter<String>) {
         while let Some(s) = toks.next() {
             if s.trim().is_empty() {
@@ -70,11 +80,18 @@ impl<'a> Interpreter<'a> {
                 Ok(num) => env.push(num),
                 Err(_) => {
                     // Check if this is a valid variable or not
-                    match self.eval_variable(s, env) {
-                        None => {
-                            println!("Invalid token: {}", s);
-                            break;
-                        }
+                    match self.eval_constant(s, env) {
+                        None => match self.eval_variable(s, env) {
+                            None => {
+                                println!("Invalid token: {}", s);
+                                break;
+                            }
+                            Some(Ok(())) => continue,
+                            Some(Err(e)) => {
+                                println!("Error: {}", e);
+                                break;
+                            }
+                        },
                         Some(Ok(())) => continue,
                         Some(Err(e)) => {
                             println!("Error: {}", e);
@@ -229,6 +246,14 @@ impl<'a> Interpreter<'a> {
             }
         }
 
+        if start == "constant" {
+            // Variable introduction
+            match self.eval_intro_constant(env, toks) {
+                Ok(()) => return Some(Ok(())),
+                Err(e) => return Some(Err(e)),
+            }
+        }
+
         None
     }
 
@@ -236,6 +261,16 @@ impl<'a> Interpreter<'a> {
         if let Some(var_name) = toks.next() {
             // TODO: Check if this is a valid variable name or not
             env.vars.insert(var_name.clone(), 0);
+            Ok(())
+        } else {
+            Err(format!("Variable name not found"))
+        }
+    }
+
+    fn eval_intro_constant(&self, env: &mut ForthEnv, toks: &mut Iter<String>) -> ForthResult<()> {
+        if let Some(const_name) = toks.next() {
+            let x = env.pop(format!("Stack empty to set constant {}", const_name))?;
+            env.constants.insert(const_name.clone(), x);
             Ok(())
         } else {
             Err(format!("Variable name not found"))

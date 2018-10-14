@@ -12,6 +12,7 @@ pub struct ForthEnv {
     pub funcs: HashMap<String, ForthFunc>,
     pub vars: HashMap<String, i32>,
     pub var_refs: Vec<String>,
+    pub constants: HashMap<String, i32>,
 }
 
 pub struct Interpreter<'a> {
@@ -25,6 +26,7 @@ impl ForthEnv {
             funcs: HashMap::new(),
             vars: HashMap::new(),
             var_refs: vec![],
+            constants: HashMap::new(),
         }
     }
 
