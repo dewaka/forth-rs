@@ -35,7 +35,51 @@ pub fn dup(env: &mut ForthEnv) -> ForthResult<()> {
 }
 
 pub fn pop(env: &mut ForthEnv) -> ForthResult<()> {
-    env.pop(format!("Empty stack for ."))?;
+    let x = env.pop(format!("Empty stack for ."))?;
+    println!("{}", x);
+    Ok(())
+}
+
+pub fn swap(env: &mut ForthEnv) -> ForthResult<()> {
+    let x = env.pop(format!("Empty stack for first element in swap"))?;
+    let y = env.pop(format!("Empty stack for second element in swap"))?;
+    env.push(x);
+    env.push(y);
+    Ok(())
+}
+
+pub fn over(env: &mut ForthEnv) -> ForthResult<()> {
+    let x = env.pop(format!("Empty stack for first element in over"))?;
+    let y = env.pop(format!("Empty stack for second element in over"))?;
+    env.push(y);
+    env.push(x);
+    env.push(y);
+    Ok(())
+}
+
+pub fn rot(env: &mut ForthEnv) -> ForthResult<()> {
+    let x = env.pop(format!("Empty stack for first element in rot"))?;
+    let y = env.pop(format!("Empty stack for second element in rot"))?;
+    let z = env.pop(format!("Empty stack for third element in rot"))?;
+    env.push(y);
+    env.push(x);
+    env.push(z);
+    Ok(())
+}
+
+pub fn drop(env: &mut ForthEnv) -> ForthResult<()> {
+    env.pop(format!("Empty stack for drop"))?;
+    Ok(())
+}
+
+pub fn emit(env: &mut ForthEnv) -> ForthResult<()> {
+    let x = env.pop(format!("Empty stack for emit"))?;
+    print!("{}", (x as u8) as char);
+    Ok(())
+}
+
+pub fn cr(_: &mut ForthEnv) -> ForthResult<()> {
+    println!("");
     Ok(())
 }
 

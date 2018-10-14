@@ -46,7 +46,7 @@ impl ForthEnv {
 }
 
 impl<'a> Interpreter<'a> {
-    fn parse_function(&self, toks: &mut Iter<String>) -> Option<ForthFunc> {
+    fn parse_function(&self, toks: &mut Iter<String>) -> ForthResult<ForthFunc> {
         // Get the name
         if let Some(n) = toks.next() {
             let name = n.to_string(); // TODO: Check if the name is a valid one
@@ -55,10 +55,63 @@ impl<'a> Interpreter<'a> {
             while let Some(s) = toks.next() {
                 if s == &";" {
                     // end of function definition
-                    return Some((name, definition));
+                    return Ok((name, definition));
                 } else {
                     definition.push(s.to_string());
                 }
+            }
+        }
+
+        Err(format!("Invalid function"))
+    }
+
+    // TODO: Fix this - tokenisation as I've done does not work with this case!
+    fn parse_string(&self, toks: &mut Iter<String>) -> ForthResult<String> {
+        let mut msg = String::new();
+
+        while let Some(m) = toks.next() {
+            if m == "\"" {
+                return Ok(msg);
+            }
+            if m.ends_with("\"") {
+                let mut temp = m.clone();
+                temp.pop();
+                msg.push_str(&temp.clone());
+                return Ok(msg);
+            }
+            msg.push_str(&format!("{} ", m));
+        }
+
+        Err(format!("Nonterminated string"))
+    }
+
+    fn eval_special(
+        &self,
+        start: &str,
+        env: &mut ForthEnv,
+        toks: &mut Iter<String>,
+    ) -> Option<ForthResult<()>> {
+        // Handle function definitions
+        if start == ":" {
+            match self.parse_function(toks) {
+                Ok(func) => {
+                    println!("Defined: {:?}", func);
+                    let fname = func.0.clone();
+                    env.funcs.insert(fname, func);
+                    return Some(Ok(()));
+                }
+                Err(e) => return Some(Err(e)),
+            }
+        }
+
+        // Handle string output
+        if start == ".\"" {
+            match self.parse_string(toks) {
+                Ok(msg) => {
+                    print!("{}", msg);
+                    return Some(Ok(()));
+                }
+                Err(e) => return Some(Err(e)),
             }
         }
 
@@ -67,21 +120,18 @@ impl<'a> Interpreter<'a> {
 
     fn eval_toks(&self, env: &mut ForthEnv, toks: &mut Iter<String>) {
         while let Some(s) = toks.next() {
-            if s == &":" {
-                println!("Parsing function");
-                match self.parse_function(toks) {
-                    None => {
-                        println!("Error parsing function");
-                        return;
-                    }
-                    Some(func) => {
-                        println!("Adding function: {:?}", func);
-                        let fname = func.0.clone();
-                        env.funcs.insert(fname, func);
-                    }
-                }
-
+            if s.trim().is_empty() {
+                // skip empty tokens
                 continue;
+            }
+
+            match self.eval_special(s, env, toks) {
+                None => (),
+                Some(Ok(())) => continue,
+                Some(Err(e)) => {
+                    println!("Error: {}", e);
+                    break;
+                }
             }
 
             match s.parse::<i32>() {
@@ -93,8 +143,6 @@ impl<'a> Interpreter<'a> {
                             _ => (),
                         }
                     } else if env.funcs.contains_key(&s.to_string()) {
-                        println!("Applying function: {}", s);
-
                         let func = env.funcs.get(&s.to_string()).unwrap().clone();
                         self.eval_toks(env, &mut func.1.iter())
                     } else {
@@ -110,11 +158,7 @@ impl<'a> Interpreter<'a> {
     }
 
     pub fn eval(&self, env: &mut ForthEnv, expr: &str) {
-        let tokens: Vec<_> = expr
-            .split(" ")
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .collect();
+        let tokens: Vec<_> = expr.split(" ").map(|s| s.trim().to_string()).collect();
 
         self.eval_toks(env, &mut tokens.iter());
     }
@@ -149,6 +193,12 @@ impl<'a> Interpreter<'a> {
         self.builtins.insert("d".to_owned(), &ops::print_func);
         self.builtins.insert("dup".to_owned(), &ops::dup);
         self.builtins.insert(".".to_owned(), &ops::pop);
+        self.builtins.insert("drop".to_owned(), &ops::drop);
+        self.builtins.insert("swap".to_owned(), &ops::swap);
+        self.builtins.insert("over".to_owned(), &ops::over);
+        self.builtins.insert("rot".to_owned(), &ops::rot);
+        self.builtins.insert("emit".to_owned(), &ops::emit);
+        self.builtins.insert("cr".to_owned(), &ops::cr);
 
         // Boolean ops
         self.builtins.insert("=".to_owned(), &ops::eq);
