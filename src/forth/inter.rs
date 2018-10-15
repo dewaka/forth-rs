@@ -95,6 +95,8 @@ impl<'a> Interpreter<'a> {
         self.builtins.insert("*".to_owned(), &ops::mul);
         self.builtins.insert("/".to_owned(), &ops::div);
         self.builtins.insert("mod".to_owned(), &ops::modulus);
+        self.builtins.insert("and".to_owned(), &ops::and);
+        self.builtins.insert("or".to_owned(), &ops::or);
 
         // Core ops
         self.builtins.insert("p".to_owned(), &ops::print_stack);
@@ -116,5 +118,6 @@ impl<'a> Interpreter<'a> {
         self.builtins.insert(">".to_owned(), &ops::gt);
         self.builtins.insert("<=".to_owned(), &ops::lt_eq);
         self.builtins.insert(">=".to_owned(), &ops::gt_eq);
+        self.builtins.insert("invert".to_owned(), &ops::invert);
     }
 }

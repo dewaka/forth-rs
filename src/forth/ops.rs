@@ -30,6 +30,14 @@ pub fn modulus(env: &mut ForthEnv) -> ForthResult<()> {
     binary_op("mod", |x, y| y % x, env)
 }
 
+pub fn and(env: &mut ForthEnv) -> ForthResult<()> {
+    binary_op("and", |x, y| y & x, env)
+}
+
+pub fn or(env: &mut ForthEnv) -> ForthResult<()> {
+    binary_op("or", |x, y| y | x, env)
+}
+
 // Core operations
 pub fn dup(env: &mut ForthEnv) -> ForthResult<()> {
     let x = env.pop(format!("Empty stack for dup"))?;
@@ -141,4 +149,10 @@ pub fn lt_eq(env: &mut ForthEnv) -> ForthResult<()> {
 
 pub fn gt_eq(env: &mut ForthEnv) -> ForthResult<()> {
     binary_bool_op(">=", |x, y| y >= x, env)
+}
+
+pub fn invert(env: &mut ForthEnv) -> ForthResult<()> {
+    let x = env.pop(format!("Empty stack for invert"))?;
+    env.push(if x == 0 { -1 } else { 0 });
+    Ok(())
 }
