@@ -26,6 +26,10 @@ pub fn div(env: &mut ForthEnv) -> ForthResult<()> {
     binary_op("/", |x, y| y / x, env)
 }
 
+pub fn modulus(env: &mut ForthEnv) -> ForthResult<()> {
+    binary_op("mod", |x, y| y % x, env)
+}
+
 // Core operations
 pub fn dup(env: &mut ForthEnv) -> ForthResult<()> {
     let x = env.pop(format!("Empty stack for dup"))?;
@@ -117,6 +121,10 @@ fn binary_bool_op(name: &str, op: BinBoolOp, env: &mut ForthEnv) -> ForthResult<
 
 pub fn eq(env: &mut ForthEnv) -> ForthResult<()> {
     binary_bool_op("=", |x, y| x == y, env)
+}
+
+pub fn not_eq(env: &mut ForthEnv) -> ForthResult<()> {
+    binary_bool_op("=", |x, y| x != y, env)
 }
 
 pub fn lt(env: &mut ForthEnv) -> ForthResult<()> {

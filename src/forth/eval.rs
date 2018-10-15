@@ -40,6 +40,16 @@ impl<'a> Interpreter<'a> {
         }
     }
 
+    fn eval_special_variables(&self, name: &str, env: &mut ForthEnv) -> bool {
+        match env.get_special(name) {
+            Some(val) => {
+                env.push(val);
+                true
+            }
+            None => false,
+        }
+    }
+
     pub fn eval_toks(&self, env: &mut ForthEnv, toks: &mut Iter<String>) {
         while let Some(s) = toks.next() {
             if s.trim().is_empty() {
@@ -48,13 +58,18 @@ impl<'a> Interpreter<'a> {
             }
 
             // Handle special forms
-            match self.eval_special(s, env, toks) {
+            match self.eval_special_forms(s, env, toks) {
                 None => (),
                 Some(Ok(())) => continue,
                 Some(Err(e)) => {
                     println!("Error: {}", e);
                     break;
                 }
+            }
+
+            // Handle special variables
+            if self.eval_special_variables(s, env) {
+                continue;
             }
 
             match self.eval_builtin(s, env) {
@@ -102,8 +117,8 @@ impl<'a> Interpreter<'a> {
             }
         }
 
-        print!("=> ");
-        env.print_stack();
+        // print!("=> ");
+        // env.print_stack();
     }
 
     fn parse_function(&self, toks: &mut Iter<String>) -> ForthResult<ForthFunc> {
@@ -185,7 +200,7 @@ impl<'a> Interpreter<'a> {
         Ok(())
     }
 
-    fn eval_special(
+    fn eval_special_forms(
         &self,
         start: &str,
         env: &mut ForthEnv,
@@ -254,6 +269,14 @@ impl<'a> Interpreter<'a> {
             }
         }
 
+        if start == "do" {
+            // do loop
+            match self.eval_do_loop(env, toks) {
+                Ok(()) => return Some(Ok(())),
+                Err(e) => return Some(Err(e)),
+            }
+        }
+
         None
     }
 
@@ -265,6 +288,34 @@ impl<'a> Interpreter<'a> {
         } else {
             Err(format!("Variable name not found"))
         }
+    }
+
+    // do [loop body] loop
+    fn eval_do_loop(&self, env: &mut ForthEnv, toks: &mut Iter<String>) -> ForthResult<()> {
+        let mut loop_body = vec![];
+
+        while let Some(t) = toks.next() {
+            if t == "loop" {
+                break;
+            }
+            loop_body.push(t.clone());
+        }
+
+        if loop_body.is_empty() {
+            return Err(format!("Empty loop body"));
+        }
+
+        let start = env.pop(format!("Empty stack for start of do loop"))?;
+        let end = env.pop(format!("Empty stack for end of do loop"))?;
+
+        for i in start..end {
+            env.set_special("i", i);
+            self.eval_toks(env, &mut loop_body.iter());
+        }
+
+        env.clear_special("i");
+
+        Ok(())
     }
 
     fn eval_intro_constant(&self, env: &mut ForthEnv, toks: &mut Iter<String>) -> ForthResult<()> {

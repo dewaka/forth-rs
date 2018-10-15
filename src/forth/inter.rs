@@ -13,6 +13,7 @@ pub struct ForthEnv {
     pub vars: HashMap<String, i32>,
     pub var_refs: Vec<String>,
     pub constants: HashMap<String, i32>,
+    pub specials: HashMap<String, i32>,
 }
 
 pub struct Interpreter<'a> {
@@ -27,6 +28,7 @@ impl ForthEnv {
             vars: HashMap::new(),
             var_refs: vec![],
             constants: HashMap::new(),
+            specials: HashMap::new(),
         }
     }
 
@@ -52,6 +54,23 @@ impl ForthEnv {
     pub fn print_vars(&self) {
         println!("{:?}", self.vars);
     }
+
+    pub fn get_special(&self, name: &str) -> Option<i32> {
+        if self.specials.contains_key(name) {
+            let val = *self.specials.get(name).unwrap();
+            Some(val)
+        } else {
+            None
+        }
+    }
+
+    pub fn set_special(&mut self, name: &str, value: i32) -> Option<i32>{
+        self.specials.insert(name.to_string(), value)
+    }
+
+    pub fn clear_special(&mut self, name: &str) -> Option<i32>{
+        self.specials.remove(name)
+    }
 }
 
 impl<'a> Interpreter<'a> {
@@ -75,6 +94,7 @@ impl<'a> Interpreter<'a> {
         self.builtins.insert("-".to_owned(), &ops::subtract);
         self.builtins.insert("*".to_owned(), &ops::mul);
         self.builtins.insert("/".to_owned(), &ops::div);
+        self.builtins.insert("mod".to_owned(), &ops::modulus);
 
         // Core ops
         self.builtins.insert("p".to_owned(), &ops::print_stack);
@@ -91,6 +111,7 @@ impl<'a> Interpreter<'a> {
 
         // Boolean ops
         self.builtins.insert("=".to_owned(), &ops::eq);
+        self.builtins.insert("!=".to_owned(), &ops::not_eq);
         self.builtins.insert("<".to_owned(), &ops::lt);
         self.builtins.insert(">".to_owned(), &ops::gt);
         self.builtins.insert("<=".to_owned(), &ops::lt_eq);
