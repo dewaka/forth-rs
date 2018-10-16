@@ -7,11 +7,23 @@ pub type ForthResult<T> = result::Result<T, String>;
 pub type Ops = Fn(&mut ForthEnv) -> ForthResult<()>;
 pub type ForthFunc = (String, Vec<String>);
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum ForthVar {
+    Var(i32),
+    Array(Vec<i32>),
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum VarRef {
+    Var(String),
+    Array(String, i32),
+}
+
 pub struct ForthEnv {
     pub stack: Vec<i32>,
     pub funcs: HashMap<String, ForthFunc>,
-    pub vars: HashMap<String, i32>,
-    pub var_refs: Vec<String>,
+    pub vars: HashMap<String, ForthVar>,
+    pub var_refs: Vec<VarRef>,
     pub constants: HashMap<String, i32>,
     pub specials: HashMap<String, i32>,
 }
@@ -36,6 +48,13 @@ impl ForthEnv {
         match self.stack.pop() {
             Some(n) => Ok(n),
             None => Err(msg),
+        }
+    }
+
+    pub fn top(&mut self, msg: String) -> ForthResult<i32> {
+        match self.stack.len() {
+            0 => Err(msg),
+            n => Ok(self.stack[n - 1]),
         }
     }
 
@@ -64,12 +83,34 @@ impl ForthEnv {
         }
     }
 
-    pub fn set_special(&mut self, name: &str, value: i32) -> Option<i32>{
+    pub fn set_special(&mut self, name: &str, value: i32) -> Option<i32> {
         self.specials.insert(name.to_string(), value)
     }
 
-    pub fn clear_special(&mut self, name: &str) -> Option<i32>{
+    pub fn clear_special(&mut self, name: &str) -> Option<i32> {
         self.specials.remove(name)
+    }
+
+    pub fn allot_array(&mut self, name: &str, length: i32) {
+        let arr = ForthVar::Array(vec![0; length as usize]);
+        self.vars.insert(name.to_string(), arr);
+    }
+
+    pub fn array_set(&mut self, name: &str, pos: i32, value: i32) -> bool {
+        if self.vars.contains_key(name) {
+            let var = self.vars.get(name).unwrap().clone();
+            match var {
+                ForthVar::Var(_) => false,
+                ForthVar::Array(vec) => {
+                    let mut new_vec = vec.clone();
+                    new_vec[pos as usize] = value;
+                    self.vars.insert(name.to_string(), ForthVar::Array(new_vec));
+                    true
+                },
+            }
+        } else {
+            false
+        }
     }
 }
 

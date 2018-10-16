@@ -1,4 +1,4 @@
-use forth::inter::{ForthEnv, ForthFunc, ForthResult, Interpreter};
+use forth::inter::{ForthEnv, ForthFunc, ForthResult, ForthVar, Interpreter, VarRef};
 use std::slice::Iter;
 
 impl<'a> Interpreter<'a> {
@@ -23,7 +23,16 @@ impl<'a> Interpreter<'a> {
 
     fn eval_variable(&self, name: &str, env: &mut ForthEnv) -> Option<ForthResult<()>> {
         if env.vars.contains_key(&name.to_string()) {
-            env.var_refs.push(name.to_string());
+            let is_array = match env.vars.get(&name.to_string()).unwrap() {
+                ForthVar::Var(_) => false,
+                ForthVar::Array(_) => true,
+            };
+
+            if is_array {
+                env.var_refs.push(VarRef::Array(name.to_string(), 0));
+            } else {
+                env.var_refs.push(VarRef::Var(name.to_string()));
+            }
             Some(Ok(()))
         } else {
             None
@@ -117,8 +126,8 @@ impl<'a> Interpreter<'a> {
             }
         }
 
-        // print!("=> ");
-        // env.print_stack();
+        print!("=> ");
+        env.print_stack();
     }
 
     fn parse_function(&self, toks: &mut Iter<String>) -> ForthResult<ForthFunc> {
@@ -269,6 +278,20 @@ impl<'a> Interpreter<'a> {
             }
         }
 
+        if start == "cells" {
+            match self.eval_cells(env) {
+                Ok(()) => return Some(Ok(())),
+                Err(e) => return Some(Err(e)),
+            }
+        }
+
+        if start == "allot" {
+            match self.eval_allot(env) {
+                Ok(()) => return Some(Ok(())),
+                Err(e) => return Some(Err(e)),
+            }
+        }
+
         if start == "do" {
             // do loop
             match self.eval_do_loop(env, toks) {
@@ -277,13 +300,66 @@ impl<'a> Interpreter<'a> {
             }
         }
 
+        if start == "+" {
+            match self.eval_set_array_slot(env) {
+                Some(Ok(())) => return Some(Ok(())),
+                Some(Err(e)) => return Some(Err(e)),
+                None => (),
+            }
+        }
+
         None
+    }
+
+    fn eval_set_array_slot(&self, env: &mut ForthEnv) -> Option<ForthResult<()>> {
+        if env.var_refs.is_empty() {
+            return None;
+        }
+
+        let last = env.var_refs.len() - 1;
+        let variable = env.var_refs[last].clone();
+        match variable {
+            VarRef::Var(name) => Some(Err(format!("Cannot set slot on normal variable: {}", name))),
+            VarRef::Array(name, _) => {
+                match env.pop(format!("Stack empty to set slot value for array")) {
+                    Ok(pos) => {
+                        env.var_refs[last] = VarRef::Array(name, pos);
+                        Some(Ok(()))
+                    }
+                    Err(e) => Some(Err(e)),
+                }
+            }
+        }
+    }
+
+    fn eval_allot(&self, env: &mut ForthEnv) -> ForthResult<()> {
+        if env.var_refs.is_empty() {
+            return Err(format!("No variable found to allocate as an array!"));
+        }
+
+        let length = env.pop(format!("Stack empty to allocate array"))?;
+        let var_name = match env.var_refs.pop().unwrap() {
+            VarRef::Var(name) => name,
+            VarRef::Array(name, _) => return Err(format!("{} is already an array", name)),
+        };
+
+        env.allot_array(&var_name, length);
+
+        Ok(())
+    }
+
+    fn eval_cells(&self, env: &mut ForthEnv) -> ForthResult<()> {
+        // We don't have actually do anything but to ensure that the stack is
+        // not empty to preserve Forth semantics
+        env.top(format!("Empty stack to evaluate cells"))?;
+        Ok(())
     }
 
     fn eval_intro_variable(&self, env: &mut ForthEnv, toks: &mut Iter<String>) -> ForthResult<()> {
         if let Some(var_name) = toks.next() {
             // TODO: Check if this is a valid variable name or not
-            env.vars.insert(var_name.clone(), 0);
+            env.vars.insert(var_name.clone(), ForthVar::Var(0));
+            env.var_refs.push(VarRef::Var(var_name.clone()));
             Ok(())
         } else {
             Err(format!("Variable name not found"))
@@ -330,13 +406,26 @@ impl<'a> Interpreter<'a> {
 
     fn eval_variable_set(&self, env: &mut ForthEnv) -> ForthResult<()> {
         match env.var_refs.pop() {
-            Some(var_name) => {
-                if env.vars.contains_key(&var_name) {
-                    let x = env.pop(format!("Stack empty to set variable value"))?;
-                    env.vars.insert(var_name, x);
-                    Ok(())
-                } else {
-                    Err(format!("No such variable: {}", var_name))
+            Some(var) => {
+                match var {
+                    VarRef::Var(var_name) => if env.vars.contains_key(&var_name) {
+                        let x = env.pop(format!("Stack empty to set variable value"))?;
+                        env.vars.insert(var_name, ForthVar::Var(x));
+                        Ok(())
+                    } else {
+                        Err(format!("No such variable: {}", var_name))
+                    },
+                    VarRef::Array(var_name, pos) => if env.vars.contains_key(&var_name) {
+                        let x = env.pop(format!("Stack empty to set array value"))?;
+                        // env.vars.insert(var_name, ForthVar::Var(x));
+                        if env.array_set(&var_name, pos, x) {
+                            Ok(())
+                        } else {
+                            Err(format!("Setting array {} to value {} as position {} failed", var_name, x, pos))
+                        }
+                    } else {
+                        Err(format!("No such array: {}", var_name))
+                    },
                 }
             }
             None => Err(format!("No variable reference found to set value")),
@@ -345,13 +434,21 @@ impl<'a> Interpreter<'a> {
 
     fn eval_variable_get(&self, env: &mut ForthEnv) -> ForthResult<()> {
         match env.var_refs.pop() {
-            Some(var_name) => match env.vars.get(&var_name) {
-                Some(&value) => {
-                    env.push(value);
-                    Ok(())
+            Some(VarRef::Var(var_name)) => if env.vars.contains_key(&var_name) {
+                let value = env.vars.get(&var_name).unwrap().clone();
+                match value {
+                    ForthVar::Var(num) => {
+                        env.push(num);
+                        Ok(())
+                    }
+                    ForthVar::Array(_) => {
+                        Err(format!("Array variable {} not supported yet", var_name))
+                    }
                 }
-                None => Err(format!("No such variable: {}", var_name)),
+            } else {
+                Err(format!("No such variable: {}", var_name))
             },
+            Some(VarRef::Array(_var_name, _pos)) => unimplemented!(),
             None => Err(format!("No variable reference found to set value")),
         }
     }
