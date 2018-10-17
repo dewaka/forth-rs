@@ -406,28 +406,28 @@ impl<'a> Interpreter<'a> {
 
     fn eval_variable_set(&self, env: &mut ForthEnv) -> ForthResult<()> {
         match env.var_refs.pop() {
-            Some(var) => {
-                match var {
-                    VarRef::Var(var_name) => if env.vars.contains_key(&var_name) {
-                        let x = env.pop(format!("Stack empty to set variable value"))?;
-                        env.vars.insert(var_name, ForthVar::Var(x));
+            Some(var) => match var {
+                VarRef::Var(var_name) => if env.vars.contains_key(&var_name) {
+                    let x = env.pop(format!("Stack empty to set variable value"))?;
+                    env.vars.insert(var_name, ForthVar::Var(x));
+                    Ok(())
+                } else {
+                    Err(format!("No such variable: {}", var_name))
+                },
+                VarRef::Array(var_name, pos) => if env.vars.contains_key(&var_name) {
+                    let x = env.pop(format!("Stack empty to set array value"))?;
+                    if env.array_set(&var_name, pos, x) {
                         Ok(())
                     } else {
-                        Err(format!("No such variable: {}", var_name))
-                    },
-                    VarRef::Array(var_name, pos) => if env.vars.contains_key(&var_name) {
-                        let x = env.pop(format!("Stack empty to set array value"))?;
-                        // env.vars.insert(var_name, ForthVar::Var(x));
-                        if env.array_set(&var_name, pos, x) {
-                            Ok(())
-                        } else {
-                            Err(format!("Setting array {} to value {} as position {} failed", var_name, x, pos))
-                        }
-                    } else {
-                        Err(format!("No such array: {}", var_name))
-                    },
-                }
-            }
+                        Err(format!(
+                            "Setting array {} to value {} as position {} failed",
+                            var_name, x, pos
+                        ))
+                    }
+                } else {
+                    Err(format!("No such array: {}", var_name))
+                },
+            },
             None => Err(format!("No variable reference found to set value")),
         }
     }
@@ -441,14 +441,25 @@ impl<'a> Interpreter<'a> {
                         env.push(num);
                         Ok(())
                     }
-                    ForthVar::Array(_) => {
-                        Err(format!("Array variable {} not supported yet", var_name))
-                    }
+                    ForthVar::Array(_) => Err(format!(
+                        "Unexpected array found when variable expected with name {}",
+                        var_name
+                    )),
                 }
             } else {
                 Err(format!("No such variable: {}", var_name))
             },
-            Some(VarRef::Array(_var_name, _pos)) => unimplemented!(),
+            Some(VarRef::Array(var_name, pos)) => match env.vars.get(&var_name).unwrap().clone() {
+                ForthVar::Var(_) => Err(format!(
+                    "Unexpected variable found when array expected with name {}",
+                    var_name
+                )),
+                ForthVar::Array(arr) => {
+                    let x = arr[pos as usize];
+                    env.push(x);
+                    Ok(())
+                }
+            },
             None => Err(format!("No variable reference found to set value")),
         }
     }

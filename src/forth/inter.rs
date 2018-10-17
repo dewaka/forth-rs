@@ -106,7 +106,7 @@ impl ForthEnv {
                     new_vec[pos as usize] = value;
                     self.vars.insert(name.to_string(), ForthVar::Array(new_vec));
                     true
-                },
+                }
             }
         } else {
             false
