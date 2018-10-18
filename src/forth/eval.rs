@@ -416,13 +416,13 @@ impl<'a> Interpreter<'a> {
                 },
                 VarRef::Array(var_name, pos) => if env.vars.contains_key(&var_name) {
                     let x = env.pop(format!("Stack empty to set array value"))?;
-                    if env.array_set(&var_name, pos, x) {
-                        Ok(())
-                    } else {
-                        Err(format!(
-                            "Setting array {} to value {} as position {} failed",
-                            var_name, x, pos
-                        ))
+
+                    match env.array_set(&var_name, pos, x) {
+                        Ok(()) => Ok(()),
+                        Err(e) => Err(format!(
+                            "Setting array {} value failed because: {}",
+                            var_name, e
+                        )),
                     }
                 } else {
                     Err(format!("No such array: {}", var_name))

@@ -96,20 +96,28 @@ impl ForthEnv {
         self.vars.insert(name.to_string(), arr);
     }
 
-    pub fn array_set(&mut self, name: &str, pos: i32, value: i32) -> bool {
+    pub fn array_set(&mut self, name: &str, pos: i32, value: i32) -> ForthResult<()> {
         if self.vars.contains_key(name) {
             let var = self.vars.get(name).unwrap().clone();
             match var {
-                ForthVar::Var(_) => false,
+                ForthVar::Var(_) => Err(format!("Variable {} is not an array!", name)),
                 ForthVar::Array(vec) => {
                     let mut new_vec = vec.clone();
-                    new_vec[pos as usize] = value;
-                    self.vars.insert(name.to_string(), ForthVar::Array(new_vec));
-                    true
+                    if new_vec.len() > (pos as usize) && pos >= 0 {
+                        new_vec[pos as usize] = value;
+                        self.vars.insert(name.to_string(), ForthVar::Array(new_vec));
+                        Ok(())
+                    } else {
+                        Err(format!(
+                            "Cannot set at position: {} when array length is: {}",
+                            pos,
+                            new_vec.len()
+                        ))
+                    }
                 }
             }
         } else {
-            false
+            Err(format!("No such array variable: {}", name))
         }
     }
 }
