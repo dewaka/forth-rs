@@ -3,9 +3,9 @@ use std::result;
 
 use forth::ops;
 
-pub type ForthResult<T> = result::Result<T, String>;
-pub type Ops = Fn(&mut ForthEnv) -> ForthResult<()>;
-pub type ForthFunc = (String, Vec<String>);
+pub(crate) type ForthResult<T> = result::Result<T, String>;
+pub(crate) type Ops = Fn(&mut ForthEnv) -> ForthResult<()>;
+pub(crate) type ForthFunc = (String, Vec<String>);
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ForthVar {
@@ -20,16 +20,16 @@ pub enum VarRef {
 }
 
 pub struct ForthEnv {
-    pub stack: Vec<i32>,
-    pub funcs: HashMap<String, ForthFunc>,
-    pub vars: HashMap<String, ForthVar>,
-    pub var_refs: Vec<VarRef>,
-    pub constants: HashMap<String, i32>,
-    pub specials: HashMap<String, i32>,
+    stack: Vec<i32>,
+    funcs: HashMap<String, ForthFunc>,
+    vars: HashMap<String, ForthVar>,
+    var_refs: Vec<VarRef>,
+    constants: HashMap<String, i32>,
+    specials: HashMap<String, i32>,
 }
 
 pub struct Interpreter<'a> {
-    pub builtins: HashMap<String, &'a Ops>,
+    pub(crate) builtins: HashMap<String, &'a Ops>,
 }
 
 impl ForthEnv {
@@ -42,6 +42,50 @@ impl ForthEnv {
             constants: HashMap::new(),
             specials: HashMap::new(),
         }
+    }
+
+    pub fn top_variable_ref(&mut self) -> Option<VarRef> {
+        if self.var_refs.is_empty() {
+            None
+        } else {
+            let var = self.var_refs[self.var_refs.len() - 1].clone();
+            Some(var)
+        }
+    }
+
+    pub fn pop_variable_ref(&mut self) -> Option<VarRef> {
+        self.var_refs.pop()
+    }
+
+    pub fn push_variable_ref(&mut self, var: VarRef) {
+        self.var_refs.push(var);
+    }
+
+    pub fn get_variable(&self, name: &str) -> Option<ForthVar> {
+        self.vars.get(name).map(|v| v.clone())
+    }
+
+    pub fn add_variable(&mut self, name: &str, value: ForthVar) -> Option<ForthVar> {
+        self.vars.insert(name.to_string(), value)
+    }
+
+    pub fn get_constant(&self, name: &str) -> Option<i32> {
+        self.constants.get(name).map(|n| *n)
+    }
+
+    pub fn add_constant(&mut self, name: &str, value: i32) -> Option<i32> {
+        self.constants.insert(name.to_string(), value)
+    }
+
+    pub fn get_function(&self, name: &str) -> Option<ForthFunc> {
+        match self.funcs.get(name) {
+            Some(func) => Some(func.clone()),
+            None => None,
+        }
+    }
+
+    pub fn add_function(&mut self, name: &str, func: ForthFunc) -> Option<ForthFunc> {
+        self.funcs.insert(name.to_string(), func)
     }
 
     pub fn pop(&mut self, msg: String) -> ForthResult<i32> {
