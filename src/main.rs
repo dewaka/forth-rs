@@ -10,7 +10,7 @@ fn to_quit(cmd: &str) -> bool {
 }
 
 fn run_forth() {
-    let mut env = forth::inter::ForthEnv::empty();
+    let mut env = forth::env::ForthEnv::empty();
     let intr = forth::inter::Interpreter::new();
 
     let stdin = io::stdin();

@@ -1,4 +1,4 @@
-use forth::inter::{ForthEnv, ForthResult};
+use forth::env::{ForthEnv, ForthResult};
 
 // Binary operations
 type BinOp = fn(i32, i32) -> i32;

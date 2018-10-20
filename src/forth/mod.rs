@@ -1,3 +1,3 @@
-mod eval;
+pub mod env;
 pub mod inter;
 mod ops;
