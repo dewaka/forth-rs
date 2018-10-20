@@ -1,3 +1,4 @@
+use forth::valid_forth_name;
 use std::collections::HashMap;
 use std::slice::Iter;
 
@@ -180,14 +181,16 @@ impl<'a> Interpreter<'a> {
 
     fn parse_function(&self, toks: &mut Iter<String>) -> ForthResult<ForthFunc> {
         // Get the name
-        if let Some(n) = toks.next() {
-            let name = n.to_string(); // TODO: Check if the name is a valid one
+        if let Some(name) = toks.next() {
+            if !valid_forth_name(name) {
+                return Err(format!("Invalid name for function: {}", name));
+            }
             let mut definition: Vec<String> = vec![];
 
             while let Some(s) = toks.next() {
                 if s == &";" {
                     // end of function definition
-                    return Ok((name, definition));
+                    return Ok((name.to_string(), definition));
                 } else {
                     definition.push(s.to_string());
                 }
@@ -402,10 +405,13 @@ impl<'a> Interpreter<'a> {
 
     fn eval_intro_variable(&self, env: &mut ForthEnv, toks: &mut Iter<String>) -> ForthResult<()> {
         if let Some(var_name) = toks.next() {
-            // TODO: Check if this is a valid variable name or not
-            env.add_variable(var_name, ForthVar::Var(0));
-            env.push_variable_ref(VarRef::Var(var_name.clone()));
-            Ok(())
+            if valid_forth_name(var_name) {
+                env.add_variable(var_name, ForthVar::Var(0));
+                env.push_variable_ref(VarRef::Var(var_name.clone()));
+                Ok(())
+            } else {
+                Err(format!("Invalid variable name: {}", var_name))
+            }
         } else {
             Err(format!("Variable name not found"))
         }
