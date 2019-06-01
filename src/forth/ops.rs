@@ -4,8 +4,14 @@ use forth::env::{ForthEnv, ForthResult};
 type BinOp = fn(i32, i32) -> i32;
 
 fn binary_op(name: &str, op: BinOp, env: &mut ForthEnv) -> ForthResult<()> {
-    let x = env.pop(format!("Empty stack: for first argument for {}", name))?;
-    let y = env.pop(format!("Empty stack: for second argument for {}", name))?;
+    let x = env.pop(format!(
+        "Empty stack: for first argument for {}",
+        name.to_string()
+    ))?;
+    let y = env.pop(format!(
+        "Empty stack: for second argument for {}",
+        name.to_string()
+    ))?;
     env.push(op(x, y));
     Ok(())
 }
@@ -40,29 +46,29 @@ pub fn or(env: &mut ForthEnv) -> ForthResult<()> {
 
 // Core operations
 pub fn dup(env: &mut ForthEnv) -> ForthResult<()> {
-    let x = env.pop(format!("Empty stack for dup"))?;
+    let x = env.pop("Empty stack for dup".to_string())?;
     env.push(x);
     env.push(x);
     Ok(())
 }
 
 pub fn pop(env: &mut ForthEnv) -> ForthResult<()> {
-    let x = env.pop(format!("Empty stack for ."))?;
+    let x = env.pop("Empty stack for .".to_string())?;
     println!("{}", x);
     Ok(())
 }
 
 pub fn swap(env: &mut ForthEnv) -> ForthResult<()> {
-    let x = env.pop(format!("Empty stack for first element in swap"))?;
-    let y = env.pop(format!("Empty stack for second element in swap"))?;
+    let x = env.pop("Empty stack for first element in swap".to_string())?;
+    let y = env.pop("Empty stack for second element in swap".to_string())?;
     env.push(x);
     env.push(y);
     Ok(())
 }
 
 pub fn over(env: &mut ForthEnv) -> ForthResult<()> {
-    let x = env.pop(format!("Empty stack for first element in over"))?;
-    let y = env.pop(format!("Empty stack for second element in over"))?;
+    let x = env.pop("Empty stack for first element in over".to_string())?;
+    let y = env.pop("Empty stack for second element in over".to_string())?;
     env.push(y);
     env.push(x);
     env.push(y);
@@ -70,9 +76,9 @@ pub fn over(env: &mut ForthEnv) -> ForthResult<()> {
 }
 
 pub fn rot(env: &mut ForthEnv) -> ForthResult<()> {
-    let x = env.pop(format!("Empty stack for first element in rot"))?;
-    let y = env.pop(format!("Empty stack for second element in rot"))?;
-    let z = env.pop(format!("Empty stack for third element in rot"))?;
+    let x = env.pop("Empty stack for first element in rot".to_string())?;
+    let y = env.pop("Empty stack for second element in rot".to_string())?;
+    let z = env.pop("Empty stack for third element in rot".to_string())?;
     env.push(y);
     env.push(x);
     env.push(z);
@@ -80,18 +86,18 @@ pub fn rot(env: &mut ForthEnv) -> ForthResult<()> {
 }
 
 pub fn drop(env: &mut ForthEnv) -> ForthResult<()> {
-    env.pop(format!("Empty stack for drop"))?;
+    env.pop("Empty stack for drop".to_string())?;
     Ok(())
 }
 
 pub fn emit(env: &mut ForthEnv) -> ForthResult<()> {
-    let x = env.pop(format!("Empty stack for emit"))?;
+    let x = env.pop("Empty stack for emit".to_string())?;
     print!("{}", (x as u8) as char);
     Ok(())
 }
 
 pub fn cr(_: &mut ForthEnv) -> ForthResult<()> {
-    println!("");
+    println!();
     Ok(())
 }
 
@@ -117,8 +123,14 @@ pub fn print_vars(env: &mut ForthEnv) -> ForthResult<()> {
 type BinBoolOp = fn(i32, i32) -> bool;
 
 fn binary_bool_op(name: &str, op: BinBoolOp, env: &mut ForthEnv) -> ForthResult<()> {
-    let x = env.pop(format!("Empty stack: for first argument for {}", name))?;
-    let y = env.pop(format!("Empty stack: for second argument for {}", name))?;
+    let x = env.pop(format!(
+        "Empty stack: for first argument for {}",
+        name.to_string()
+    ))?;
+    let y = env.pop(format!(
+        "Empty stack: for second argument for {}",
+        name.to_string()
+    ))?;
     if op(x, y) {
         env.push(-1);
     } else {
@@ -152,7 +164,7 @@ pub fn gt_eq(env: &mut ForthEnv) -> ForthResult<()> {
 }
 
 pub fn invert(env: &mut ForthEnv) -> ForthResult<()> {
-    let x = env.pop(format!("Empty stack for invert"))?;
+    let x = env.pop("Empty stack for invert".to_string())?;
     env.push(if x == 0 { -1 } else { 0 });
     Ok(())
 }

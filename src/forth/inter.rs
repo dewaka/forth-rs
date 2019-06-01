@@ -11,7 +11,7 @@ pub struct Interpreter<'a> {
 
 impl<'a> Interpreter<'a> {
     pub fn eval(&self, env: &mut ForthEnv, expr: &str) {
-        let tokens: Vec<_> = expr.split(" ").map(|s| s.trim().to_string()).collect();
+        let tokens: Vec<_> = expr.split(' ').map(|s| s.trim().to_string()).collect();
         self.eval_toks(env, &mut tokens.iter());
     }
 
@@ -110,6 +110,7 @@ impl<'a> Interpreter<'a> {
 
     pub fn eval_toks(&self, env: &mut ForthEnv, toks: &mut Iter<String>) {
         while let Some(s) = toks.next() {
+            // for s in &toks {
             if s.trim().is_empty() {
                 // skip empty tokens
                 continue;
@@ -187,8 +188,8 @@ impl<'a> Interpreter<'a> {
             }
             let mut definition: Vec<String> = vec![];
 
-            while let Some(s) = toks.next() {
-                if s == &";" {
+            for s in toks {
+                if s == ";" {
                     // end of function definition
                     return Ok((name.to_string(), definition));
                 } else {
@@ -197,17 +198,17 @@ impl<'a> Interpreter<'a> {
             }
         }
 
-        Err(format!("Invalid function"))
+        Err("Invalid function".to_string())
     }
 
     fn parse_string(&self, toks: &mut Iter<String>) -> ForthResult<String> {
         let mut msg = String::new();
 
-        while let Some(m) = toks.next() {
+        for m in toks {
             if m == "\"" {
                 return Ok(msg);
             }
-            if m.ends_with("\"") {
+            if m.ends_with('"') {
                 let mut temp = m.clone();
                 temp.pop();
                 msg.push_str(&temp.clone());
@@ -216,7 +217,7 @@ impl<'a> Interpreter<'a> {
             msg.push_str(&format!("{} ", m));
         }
 
-        Err(format!("Nonterminated string"))
+        Err("Nonterminated string".to_string())
     }
 
     fn eval_conditional(&self, env: &mut ForthEnv, toks: &mut Iter<String>) -> ForthResult<()> {
@@ -227,7 +228,7 @@ impl<'a> Interpreter<'a> {
         let mut after_else = vec![];
         let mut found_else = false;
 
-        while let Some(t) = toks.next() {
+        for t in toks {
             if t == "then" {
                 break;
             }
@@ -369,7 +370,7 @@ impl<'a> Interpreter<'a> {
                     Some(Err(format!("Cannot set slot on normal variable: {}", name)))
                 }
                 VarRef::Array(name, _) => {
-                    match env.pop(format!("Stack empty to set slot value for array")) {
+                    match env.pop("Stack empty to set slot value for array".to_string()) {
                         Ok(pos) => {
                             env.pop_variable_ref();
                             env.push_variable_ref(VarRef::Array(name, pos));
@@ -387,19 +388,19 @@ impl<'a> Interpreter<'a> {
     fn eval_allot(&self, env: &mut ForthEnv) -> ForthResult<()> {
         match env.pop_variable_ref() {
             Some(VarRef::Var(name)) => {
-                let length = env.pop(format!("Stack empty to allot array"))?;
+                let length = env.pop("Stack empty to allot array".to_string())?;
                 env.allot_array(&name, length);
                 Ok(())
             }
             Some(VarRef::Array(name, _)) => Err(format!("{} is already an array", name)),
-            None => Err(format!("No variable found to allocate as an array!")),
+            None => Err("No variable found to allocate as an array!".to_string()),
         }
     }
 
     fn eval_cells(&self, env: &mut ForthEnv) -> ForthResult<()> {
         // We don't have actually do anything but to ensure that the stack is
         // not empty to preserve Forth semantics
-        env.top(format!("Empty stack to evaluate cells"))?;
+        env.top("Empty stack to evaluate cells".to_string())?;
         Ok(())
     }
 
@@ -413,7 +414,7 @@ impl<'a> Interpreter<'a> {
                 Err(format!("Invalid variable name: {}", var_name))
             }
         } else {
-            Err(format!("Variable name not found"))
+            Err("Variable name not found".to_string())
         }
     }
 
@@ -421,7 +422,7 @@ impl<'a> Interpreter<'a> {
     fn eval_do_loop(&self, env: &mut ForthEnv, toks: &mut Iter<String>) -> ForthResult<()> {
         let mut loop_body = vec![];
 
-        while let Some(t) = toks.next() {
+        for t in toks {
             if t == "loop" {
                 break;
             }
@@ -429,11 +430,11 @@ impl<'a> Interpreter<'a> {
         }
 
         if loop_body.is_empty() {
-            return Err(format!("Empty loop body"));
+            return Err("Empty loop body".to_string());
         }
 
-        let start = env.pop(format!("Empty stack for start of do loop"))?;
-        let end = env.pop(format!("Empty stack for end of do loop"))?;
+        let start = env.pop("Empty stack for start of do loop".to_string())?;
+        let end = env.pop("Empty stack for end of do loop".to_string())?;
 
         for i in start..end {
             env.set_special("i", i);
@@ -451,7 +452,7 @@ impl<'a> Interpreter<'a> {
             env.add_constant(const_name, x);
             Ok(())
         } else {
-            Err(format!("Variable name not found"))
+            Err("Variable name not found".to_string())
         }
     }
 
@@ -459,16 +460,16 @@ impl<'a> Interpreter<'a> {
         match env.pop_variable_ref() {
             Some(var) => match var {
                 VarRef::Var(var_name) => {
-                    let x = env.pop(format!("Stack empty to set variable value"))?;
+                    let x = env.pop("Stack empty to set variable value".to_string())?;
                     match env.add_variable(&var_name, ForthVar::Var(x)) {
                         Some(_) => Ok(()),
                         None => Err(format!("No such variable: {}", var_name)),
                     }
                 }
                 VarRef::Array(var_name, pos) => {
-                    let x = env.pop(format!("Stack empty to set array value"))?;
+                    let x = env.pop("Stack empty to set array value".to_string())?;
 
-                    if let Some(_) = env.get_variable(&var_name) {
+                    if env.get_variable(&var_name).is_some() {
                         match env.array_set(&var_name, pos, x) {
                             Ok(()) => Ok(()),
                             Err(e) => Err(format!(
@@ -481,7 +482,7 @@ impl<'a> Interpreter<'a> {
                     }
                 }
             },
-            None => Err(format!("No variable reference found to set value")),
+            None => Err("No variable reference found to set value".to_string()),
         }
     }
 
@@ -509,7 +510,7 @@ impl<'a> Interpreter<'a> {
                     Ok(())
                 }
             },
-            None => Err(format!("No variable reference found to set value")),
+            None => Err("No variable reference found to set value".to_string()),
         }
     }
 }

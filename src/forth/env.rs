@@ -56,7 +56,7 @@ impl ForthEnv {
     }
 
     pub fn get_variable(&self, name: &str) -> Option<ForthVar> {
-        self.vars.get(name).map(|v| v.clone())
+        self.vars.get(name).cloned()
     }
 
     pub fn add_variable(&mut self, name: &str, value: ForthVar) -> Option<ForthVar> {
@@ -64,7 +64,7 @@ impl ForthEnv {
     }
 
     pub fn get_constant(&self, name: &str) -> Option<i32> {
-        self.constants.get(name).map(|n| *n)
+        self.constants.get(name).cloned()
     }
 
     pub fn add_constant(&mut self, name: &str, value: i32) -> Option<i32> {
