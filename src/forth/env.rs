@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::result;
 
 pub(crate) type ForthResult<T> = result::Result<T, String>;
-pub(crate) type Ops = Fn(&mut ForthEnv) -> ForthResult<()>;
+pub(crate) type Ops = dyn Fn(&mut ForthEnv) -> ForthResult<()>;
 pub(crate) type ForthFunc = (String, Vec<String>);
 
 #[derive(Debug, Clone, Eq, PartialEq)]
